@@ -104,17 +104,17 @@ nsm [command] [site_name] [options]
 ### Available Commands
 | Command          | Description                                      | Example                     |
 |------------------|--------------------------------------------------|-----------------------------|
-| `e <site>`       | Enable a site (create symlink)                  | `nsm e default`            |
-| `d <site>`       | Disable a site (remove symlink)                 | `nsm d default`            |
-| `er`/`re <site>` | Enable a site and reload Nginx                  | `nsm er default`           |
-| `dr`/`rd <site>` | Disable a site and reload Nginx                 | `nsm dr default`           |
-| `ed <site>`      | Edit site configuration (create if not exists)  | `nsm ed default`           |
-| `edr <site>`     | Edit and reload Nginx if saved                  | `nsm edr default`          |
+| `e site`       | Enable a site (create symlink)                  | `nsm e default`            |
+| `d site`       | Disable a site (remove symlink)                 | `nsm d default`            |
+| `er`/`re site` | Enable a site and reload Nginx                  | `nsm er default`           |
+| `dr`/`rd site` | Disable a site and reload Nginx                 | `nsm dr default`           |
+| `ed site`      | Edit site configuration (create if not exists)  | `nsm ed default`           |
+| `edr site`     | Edit and reload Nginx if saved                  | `nsm edr default`          |
 | `l`              | List available sites with status                | `nsm l`                    |
 | `r`              | Reload Nginx configuration                      | `nsm r`                    |
 | `f`              | Navigate to `/etc/nginx` directory              | `nsm f`                    |
-| `mv <old> <new>` | Rename a site configuration                     | `nsm mv oldsite newsite`   |
-| `del <site> \| "<site1,site2,...>"` | Delete one or multiple sites        | `nsm del "site1,site2"`    |
+| `mv olds news` | Rename a site configuration                     | `nsm mv oldsite newsite`   |
+| `del site \| site1,site2` | Delete one or multiple sites        | `nsm del site1,site2`    |
 | `-h`             | Show help message                               | `nsm -h`                   |
 
 ## Contributing 🤝
