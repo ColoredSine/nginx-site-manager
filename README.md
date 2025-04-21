@@ -3,6 +3,7 @@
 A lightweight bash script for managing Nginx site configurations. It simplifies tasks like enabling, disabling, editing, deleting, renaming, and listing Nginx sites, as well as reloading the Nginx service.
 
 ## Features
+nsm [command] [site_name] [options]
 - Enable (`e`) or disable (`d`) sites by managing symlinks between `sites-available` and `sites-enabled`.
 - Edit site configurations (`ed`, `edr`) with automatic reload on changes.
 - Delete single or multiple sites (`del site` or `del site1,site2`).
