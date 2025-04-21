@@ -1,0 +1,364 @@
+ utility script for managing Nginx site configurations (Nginx Site Manager).
+# Provides commands to enable, disable, edit, delete, rename, and list Nginx sites,
+# as well as reload Nginx and navigate to its configuration directory.
+
+# Nginx directories
+NGINX_CONF_DIR="/etc/nginx"
+SITES_AVAILABLE="$NGINX_CONF_DIR/sites-available"
+SITES_ENABLED="$NGINX_CONF_DIR/sites-enabled"
+
+# Editor to use for configuration files
+CONFIG_EDITOR="vim"
+
+# Script name for usage messages
+SCRIPT_NAME=$(basename "$0")
+
+# Display usage information and exit
+usage() {
+    cat << EOF
+
+Usage: $SCRIPT_NAME [command] [site_name] [options]
+
+Commands:
+  e <site>                    Enable a site (create symlink)
+  d <site>                    Disable a site (remove symlink)
+  er|re <site>                Enable a site and reload Nginx
+  dr|rd <site>                Disable a site and reload Nginx
+  ed <site>                   Edit the site configuration file in $CONFIG_EDITOR (create new if not exists)
+  edr <site>                  Edit the site configuration file in $CONFIG_EDITOR and reload Nginx if saved
+  l                           List available and enabled sites
+  r                           Reload Nginx configuration
+  f                           Change directory to $NGINX_CONF_DIR
+  mv <old> <new>              Rename a site configuration file
+  del <site> | "<site1,site2,...>"  Delete a site configuration file and its symlink (single or multiple sites)
+  -h                          Show this help message
+  (no args)                   Show this help message
+
+Examples:
+  $SCRIPT_NAME e default      Enable the 'default' site
+  $SCRIPT_NAME d default      Disable the 'default' site
+  $SCRIPT_NAME ed default     Edit the 'default' site configuration (create new if not exists)
+  $SCRIPT_NAME mv default newname  Rename 'default' to 'newname'
+  $SCRIPT_NAME del default    Delete the 'default' site configuration and its symlink
+  $SCRIPT_NAME del "main,site,home"  Delete multiple sites 'main', 'site', and 'home'
+
+EOF
+    exit 0
+}
+
+# Reload Nginx configuration
+reload_nginx() {
+    # Test the configuration first and capture output
+    NGINX_TEST_OUTPUT=$(nginx -t 2>&1)
+    if [ $? -ne 0 ]; then
+        echo "Error: Nginx configuration test failed" 1>&2
+        # Format the error output with a prefix for better readability
+        echo "$NGINX_TEST_OUTPUT" | while IFS= read -r line; do
+            echo "  [NGINX ERROR] $line" 1>&2
+        done
+        exit 1
+    fi
+
+    # Reload Nginx and capture output
+    NGINX_RELOAD_OUTPUT=$(nginx -s reload 2>&1)
+    if [ $? -eq 0 ]; then
+        echo "Nginx reloaded successfully"
+    else
+        echo "Error: Failed to reload Nginx" 1>&2
+        # Format the error output with a prefix
+        echo "$NGINX_RELOAD_OUTPUT" | while IFS= read -r line; do
+            echo "  [NGINX ERROR] $line" 1>&2
+        done
+        exit 1
+    fi
+}
+
+# Check if the script is running with root privileges
+check_root_privileges() {
+    if [ "$(id -u)" != "0" ]; then
+        echo "This script must be run as root (use sudo) for most commands" 1>&2
+        exit 1
+    fi
+}
+
+# Verify that Nginx directories exist
+check_nginx_directories() {
+    if [ ! -d "$SITES_AVAILABLE" ] || [ ! -d "$SITES_ENABLED" ]; then
+        echo "Error: Nginx directories not found ($SITES_AVAILABLE or $SITES_ENABLED)" 1>&2
+        exit 1
+    fi
+}
+
+# Main script logic starts here
+
+# Show usage if no arguments or -h is provided
+if [ "$1" = "-h" ] || [ $# -eq 0 ]; then
+    usage
+fi
+
+# Parse command-line arguments
+ACTION="$1"
+SITE_NAME="$2"
+NEW_NAME="$3"
+
+# Perform root and directory checks for all commands except 'f'
+if [ "$ACTION" != "f" ]; then
+    check_root_privileges
+    check_nginx_directories
+fi
+
+# Process the specified action
+case "$ACTION" in
+    f)
+        # Change to the Nginx configuration directory
+        echo "Changing directory to $NGINX_CONF_DIR"
+        if [ ! -d "$NGINX_CONF_DIR" ]; then
+            echo "Error: Directory $NGINX_CONF_DIR does not exist" 1>&2
+            exit 1
+        fi
+        cd "$NGINX_CONF_DIR" || {
+            echo "Error: Cannot change directory to $NGINX_CONF_DIR" 1>&2
+            exit 1
+        }
+        exec bash
+        exit 0
+        ;;
+
+    e|er|re)
+        # Enable a site by creating a symlink
+        if [ -z "$SITE_NAME" ]; then
+            echo "Error: Please specify a site to enable" 1>&2
+            usage
+        fi
+        AVAILABLE_FILE="$SITES_AVAILABLE/$SITE_NAME"
+        ENABLED_FILE="$SITES_ENABLED/$SITE_NAME"
+
+        if [ ! -f "$AVAILABLE_FILE" ]; then
+            echo "Error: Site '$SITE_NAME' not found in $SITES_AVAILABLE" 1>&2
+            exit 1
+        fi
+
+        if [ -L "$ENABLED_FILE" ]; then
+            echo "Site '$SITE_NAME' is already enabled"
+            if [ "$ACTION" = "er" ] || [ "$ACTION" = "re" ]; then
+                reload_nginx
+            fi
+            exit 0
+        fi
+
+        ln -s "$AVAILABLE_FILE" "$ENABLED_FILE"
+        if [ $? -eq 0 ]; then
+            echo "Site '$SITE_NAME' enabled successfully"
+            if [ "$ACTION" = "er" ] || [ "$ACTION" = "re" ]; then
+                reload_nginx
+            else
+                echo "Run '$SCRIPT_NAME r' to apply changes"
+            fi
+        else
+            echo "Error: Failed to enable site '$SITE_NAME'" 1>&2
+            exit 1
+        fi
+        ;;
+
+    d|dr|rd)
+        # Disable a site by removing the symlink
+        if [ -z "$SITE_NAME" ]; then
+            echo "Error: Please specify a site to disable" 1>&2
+            usage
+        fi
+        ENABLED_FILE="$SITES_ENABLED/$SITE_NAME"
+
+        if [ ! -L "$ENABLED_FILE" ]; then
+            echo "Error: Site '$SITE_NAME' is not enabled" 1>&2
+            exit 1
+        fi
+
+        rm "$ENABLED_FILE"
+        if [ $? -eq 0 ]; then
+            echo "Site '$SITE_NAME' disabled successfully"
+            if [ "$ACTION" = "dr" ] || [ "$ACTION" = "rd" ]; then
+                reload_nginx
+            else
+                echo "Run '$SCRIPT_NAME r' to apply changes"
+            fi
+        else
+            echo "Error: Failed to disable site '$SITE_NAME'" 1>&2
+            exit 1
+        fi
+        ;;
+
+    ed|edr)
+        # Edit a site configuration file
+        if [ -z "$SITE_NAME" ]; then
+            echo "Error: Please specify a site to edit" 1>&2
+            usage
+        fi
+        AVAILABLE_FILE="$SITES_AVAILABLE/$SITE_NAME"
+
+        # Get the modification time before editing (if file exists)
+        if [ -f "$AVAILABLE_FILE" ]; then
+            BEFORE_MTIME=$(stat -c %Y "$AVAILABLE_FILE" 2>/dev/null)
+        else
+            BEFORE_MTIME=""
+        fi
+
+        # Open the file in the editor (creates a new file if it doesn't exist)
+        $CONFIG_EDITOR "$AVAILABLE_FILE"
+        if [ $? -eq 0 ]; then
+            # Get the modification time after editing (if file exists)
+            if [ -f "$AVAILABLE_FILE" ]; then
+                AFTER_MTIME=$(stat -c %Y "$AVAILABLE_FILE" 2>/dev/null)
+            else
+                AFTER_MTIME=""
+            fi
+
+            # Check if the file was modified or newly created
+            if [ -n "$AFTER_MTIME" ] && { [ -z "$BEFORE_MTIME" ] || [ "$BEFORE_MTIME" != "$AFTER_MTIME" ]; }; then
+                echo "Changes saved for site '$SITE_NAME'"
+                if [ "$ACTION" = "edr" ]; then
+                    reload_nginx
+                else
+                    echo "Run '$SCRIPT_NAME r' to apply changes if you modified/saved the configuration"
+                fi
+            fi
+            # If file wasn't saved or wasn't modified, remain silent
+        else
+            echo "Error: Failed to edit site '$SITE_NAME'" 1>&2
+            exit 1
+        fi
+        ;; 
+
+    l)
+        # List available sites and their status
+        echo "Available sites ($SITES_AVAILABLE):"
+        # Use an array to store the list of sites for better performance
+        mapfile -t AVAILABLE_SITES < <(ls -1 "$SITES_AVAILABLE")
+        for site in "${AVAILABLE_SITES[@]}"; do
+            if [ -L "$SITES_ENABLED/$site" ]; then
+                echo "  $site [enabled]"
+            else
+                echo "  $site"
+            fi
+        done
+        ;;
+
+    r)
+        # Reload Nginx configuration
+        reload_nginx
+        ;;
+
+    mv)
+        # Rename a site configuration file
+        OLD_NAME="$SITE_NAME"
+        NEW_NAME="$NEW_NAME"
+        if [ -z "$OLD_NAME" ] || [ -z "$NEW_NAME" ]; then
+            echo "Error: Please specify both old and new site names (e.g., $SCRIPT_NAME mv oldname newname)" 1>&2
+            usage
+        fi
+        OLD_FILE="$SITES_AVAILABLE/$OLD_NAME"
+        NEW_FILE="$SITES_AVAILABLE/$NEW_NAME"
+        OLD_LINK="$SITES_ENABLED/$OLD_NAME"
+        NEW_LINK="$SITES_ENABLED/$NEW_NAME"
+
+        # Check if the old configuration file exists
+        if [ ! -f "$OLD_FILE" ]; then
+            echo "Error: Site '$OLD_NAME' not found in $SITES_AVAILABLE" 1>&2
+            exit 1
+        fi
+
+        # Check if the new configuration file already exists
+        if [ -f "$NEW_FILE" ]; then
+            echo "Error: Site '$NEW_NAME' already exists in $SITES_AVAILABLE" 1>&2
+            exit 1
+        fi
+
+        # Rename the configuration file
+        mv "$OLD_FILE" "$NEW_FILE"
+        if [ $? -ne 0 ]; then
+            echo "Error: Failed to rename site '$OLD_NAME' to '$NEW_NAME'" 1>&2
+            exit 1
+        fi
+
+        # Update the symlink if it exists
+        if [ -L "$OLD_LINK" ]; then
+            rm "$OLD_LINK"
+            ln -s "$NEW_FILE" "$NEW_LINK"
+            if [ $? -eq 0 ]; then
+                echo "Site '$OLD_NAME' renamed to '$NEW_NAME' successfully (with updated symlink)"
+                reload_nginx
+            else
+                echo "Error: Failed to update symlink for '$NEW_NAME'" 1>&2
+                exit 1
+            fi
+        else
+            echo "Site '$OLD_NAME' renamed to '$NEW_NAME' successfully"
+        fi
+        ;;
+
+    del)
+        # Delete a site configuration file and its symlink (single or multiple sites)
+        if [ -z "$SITE_NAME" ]; then
+            echo "Error: Please specify a site or list of sites to delete" 1>&2
+            usage
+        fi
+
+        # Check if input is a comma-separated list (wrapped in quotes or not)
+        if [[ "$SITE_NAME" =~ , ]]; then
+            # Remove quotes (if any), trim spaces around commas, and split by comma
+            SITES=$(echo "$SITE_NAME" | sed 's/^"//;s/"$//;s/[[:space:]]*,[[:space:]]*/,/g' | tr ',' '\n')
+        else
+            # Single site, treat as a single-item list
+            SITES="$SITE_NAME"
+        fi
+
+        # Track if any deletions were successful to decide on reload
+        ANY_DELETED=false
+
+        # Process each site
+        while IFS= read -r site; do
+            # Skip empty entries
+            [ -z "$site" ] && continue
+
+            AVAILABLE_FILE="$SITES_AVAILABLE/$site"
+            ENABLED_FILE="$SITES_ENABLED/$site"
+
+            # Check if the configuration file exists
+            if [ ! -f "$AVAILABLE_FILE" ]; then
+                echo "Error: Site '$site' not found in $SITES_AVAILABLE" 1>&2
+                continue
+            fi
+
+            # Remove the symlink if it exists
+            if [ -L "$ENABLED_FILE" ]; then
+                rm "$ENABLED_FILE"
+                if [ $? -ne 0 ]; then
+                    echo "Error: Failed to remove symlink for site '$site'" 1>&2
+                    continue
+                fi
+                echo "Symlink for site '$site' removed"
+            fi
+
+            # Remove the configuration file
+            rm "$AVAILABLE_FILE"
+            if [ $? -eq 0 ]; then
+                echo "Site '$site' configuration deleted successfully"
+                ANY_DELETED=true
+            else
+                echo "Error: Failed to delete site '$site' configuration" 1>&2
+            fi
+        done <<< "$SITES"
+
+        # Reload Nginx if any site was deleted
+        if [ "$ANY_DELETED" = true ]; then
+            reload_nginx
+        fi
+        ;;
+
+    *)
+        # Handle unknown commands
+        echo "Error: Unknown command '$ACTION'" 1>&2
+        usage
+        ;;
+esac
+
+exit 0
