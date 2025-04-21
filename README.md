@@ -94,8 +94,6 @@ Follow these steps to install `nsm` on your system:
 
 - **Bash**: The script runs in any standard bash environment.
 - **Nginx**: Must be installed and configured with `sites-available` and `sites-enabled` directories (common in Debian/Ubuntu).
-- **Vim**: Default editor for the `ed`/`edr` commands (configurable via the `CONFIG_EDITOR` variable in the script).
-- **stat**: Used to detect file modifications during editing.
 
 ## Usage 📖
 
