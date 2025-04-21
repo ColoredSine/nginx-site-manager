@@ -33,7 +33,7 @@ Commands:
   f                           Change directory to $NGINX_CONF_DIR
   mv <old> <new>              Rename a site configuration file
   del <site> | "<site1,site2,...>"  Delete a site configuration file and its symlink (single or multiple sites)
-  -h                          Show this help message
+  h                          Show this help message
   (no args)                   Show this help message
 
 Examples:
@@ -94,7 +94,7 @@ check_nginx_directories() {
 # Main script logic starts here
 
 # Show usage if no arguments or -h is provided
-if [ "$1" = "-h" ] || [ $# -eq 0 ]; then
+if [ "$1" = "h" ] || [ $# -eq 0 ]; then
     usage
 fi
 
