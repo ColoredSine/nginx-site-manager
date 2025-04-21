@@ -12,8 +12,8 @@ A lightweight bash script for managing Nginx site configurations. It simplifies 
 - Navigate to Nginx config directory (`f`).
 
 ## Eximple Command
-nsm e default
-nsm del default
+- nsm e default
+- nsm del default
 
 ## Installation
 1. Download the script:
