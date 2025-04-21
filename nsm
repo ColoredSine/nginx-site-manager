@@ -1,4 +1,6 @@
- utility script for managing Nginx site configurations (Nginx Site Manager).
+#!/bin/bash
+
+# A utility script for managing Nginx site configurations (Nginx Site Manager).
 # Provides commands to enable, disable, edit, delete, rename, and list Nginx sites,
 # as well as reload Nginx and navigate to its configuration directory.
 
