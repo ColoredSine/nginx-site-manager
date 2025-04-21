@@ -115,7 +115,7 @@ nsm [command] [site_name] [options]
 | `f`              | Navigate to `/etc/nginx` directory              | `nsm f`                    |
 | `mv olds news` | Rename a site configuration                     | `nsm mv oldsite newsite`   |
 | `del site \| site1,site2` | Delete one or multiple sites        | `nsm del site1,site2`    |
-| `-h`             | Show help message                               | `nsm -h`                   |
+| `h`             | Show help message                               | `nsm -h`                   |
 
 ## Contributing 🤝
 
