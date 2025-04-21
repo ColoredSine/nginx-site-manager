@@ -5,8 +5,8 @@ A lightweight bash script for managing Nginx site configurations. It simplifies 
 ## Features
 - Enable (`e`) or disable (`d`) sites by managing symlinks between `sites-available` and `sites-enabled`.
 - Edit site configurations (`ed`, `edr`) with automatic reload on changes.
-- Delete single or multiple sites (`del <site>` or `del "site1,site2"`).
-- Rename sites (`mv <old> <new>`).
+- Delete single or multiple sites (`del site` or `del site1,site2`).
+- Rename sites (`mv oldsite newsite`).
 - List available sites with their status (`l`).
 - Reload Nginx configuration (`r`).
 - Navigate to Nginx config directory (`f`).
